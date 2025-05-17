@@ -24,6 +24,7 @@ FINESSE helps investors and traders stay informed by providing instant access to
 
 ### Prerequisites
 
+- [Uses yFinance API](https://github.com/ranaroussi/yfinance) 
 - Python 3.8 or higher
 - pip package manager
 
@@ -57,3 +58,4 @@ python app.py
 ```
 
 The server will start at `http://127.0.0.1:5000`
+
