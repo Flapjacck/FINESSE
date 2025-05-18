@@ -15,7 +15,22 @@ FINESSE helps investors and traders stay informed by providing instant access to
 - Health check endpoint for monitoring
 - Live data from Yahoo Finance
 
-## Installation
+## Coming Soon
+
+- AI-powered sentiment analysis of news headlines
+- Historical sentiment tracking
+- Web interface
+- Stock price correlation with news sentiment
+
+## Getting Started
+
+### Prerequisites
+
+- [Uses yFinance API](https://github.com/ranaroussi/yfinance)
+- Python 3.8 or higher
+- pip package manager
+
+### Installation
 
 1. Clone the repository:
 
