@@ -73,8 +73,10 @@ def get_stock_news():
         print(f"[{datetime.now().isoformat()}] Fetching news for {ticker}...")
         news = stock.get_news(count=limit)
         
-        # Extract headlines and relevant info
-        top_news = []
+        # Process news items and collect titles for batch sentiment analysis
+        titles = []
+        news_items = []
+        
         for item in news:
             if not isinstance(item, dict):
                 continue
@@ -86,11 +88,9 @@ def get_stock_news():
                 
                 provider = content.get('provider', {})
                 click_through = content.get('clickThroughUrl', {})
-                
-                # Get the title for sentiment analysis
                 title = content.get('title', '')
                 
-                # Enhanced news item with metadata and sentiment analysis
+                # Create news item without sentiment
                 news_item = {
                     'title': title,
                     'publisher': provider.get('displayName'),
@@ -98,24 +98,33 @@ def get_stock_news():
                     'published': content.get('pubDate'),
                     'summary': content.get('description', ''),
                     'source': provider.get('name'),
-                    'type': content.get('type', 'article'),
-                    'sentiment': sentiment_analyzer.analyze_text(title)
+                    'type': content.get('type', 'article')
                 }
                 
-                # Only append if we have required fields
-                if all(news_item[key] for key in ['title', 'link']):
-                    top_news.append(news_item)
+                # Only include items with required fields
+                if all(news_item[key] for key in ['title', 'link']) and title:
+                    titles.append(title)
+                    news_items.append(news_item)
+                    
             except Exception as e:
                 print(f"[{datetime.now().isoformat()}] Error processing news item: {str(e)}")
                 continue
         
-        # Check if we were able to extract any news
-        if not top_news:
+        if not titles:
             return jsonify({
-                'error': f'No news articles found for {ticker}',
+                'error': f'No valid news articles found for {ticker}',
                 'status': 'error'
             }), 404
-
+        
+        # Perform batch sentiment analysis
+        sentiments = sentiment_analyzer.analyze_batch(titles)
+        
+        # Combine news items with their sentiments
+        top_news = []
+        for item, sentiment in zip(news_items, sentiments):
+            item['sentiment'] = sentiment
+            top_news.append(item)
+        
         return jsonify({
             'ticker': ticker,
             'count': len(top_news),
