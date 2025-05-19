@@ -1,45 +1,46 @@
-import { motion } from "framer-motion";
+import { motion, useAnimationFrame } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { FaSearch } from "react-icons/fa";
+import { useRef, useState } from "react";
 
-interface BackgroundElementProps {
-  x: number;
-  y: number;
-  delay: number;
-  size: string;
-  opacity: number;
-  duration: number;
-}
+// Particle component for background
+const Particle = ({ index }: { index: number }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState(() => ({
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+  }));
 
-// Custom background element component
-const BackgroundElement = ({
-  x,
-  y,
-  delay,
-  size,
-  opacity,
-  duration,
-}: BackgroundElementProps) => {
+  useAnimationFrame((t) => {
+    const speed = 0.5;
+    const angle = (t * 0.0005 + index * 0.5) % (2 * Math.PI);
+
+    setPosition({
+      x: position.x + Math.cos(angle) * speed * 0.1,
+      y: position.y + Math.sin(angle) * speed * 0.1,
+    });
+
+    if (position.x < 0) setPosition((p) => ({ ...p, x: 100 }));
+    if (position.x > 100) setPosition((p) => ({ ...p, x: 0 }));
+    if (position.y < 0) setPosition((p) => ({ ...p, y: 100 }));
+    if (position.y > 100) setPosition((p) => ({ ...p, y: 0 }));
+  });
+
   return (
     <motion.div
-      className="absolute rounded-full bg-gradient-to-br from-green-300 to-green-500 blur-xl"
+      ref={ref}
+      className="absolute w-1 h-1 bg-green-500 rounded-full"
       style={{
-        top: `${y}%`,
-        left: `${x}%`,
-        width: size,
-        height: size,
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        boxShadow: "0 0 20px 2px rgba(34, 197, 94, 0.2)",
       }}
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{
-        opacity,
-        scale: [1, 1.2, 1],
-        x: [0, -10, 10, -5, 0],
-        y: [0, 5, -5, 0],
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0.2, 0.5, 0.2] }}
       transition={{
-        delay,
-        duration,
+        duration: 3 + index * 0.2,
         repeat: Infinity,
-        repeatType: "reverse",
+        ease: "linear",
       }}
     />
   );
@@ -50,6 +51,10 @@ const LandingPage = () => {
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  const [isFocused, setIsFocused] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
   const letterVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: (i: number) => ({
@@ -62,6 +67,7 @@ const LandingPage = () => {
       },
     }),
   };
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 40 },
     visible: {
@@ -74,36 +80,71 @@ const LandingPage = () => {
       },
     },
   };
-  const finesse = "FINESSE";
-  // Generate background elements data
-  const backgroundElements = [
-    { x: 15, y: 20, size: "180px", opacity: 0.15, delay: 0, duration: 15 },
-    { x: 85, y: 30, size: "220px", opacity: 0.12, delay: 2, duration: 18 },
-    { x: 70, y: 65, size: "240px", opacity: 0.14, delay: 4, duration: 20 },
-    { x: 10, y: 80, size: "200px", opacity: 0.13, delay: 1, duration: 17 },
-    { x: 50, y: 12, size: "260px", opacity: 0.08, delay: 3.5, duration: 22 },
-    { x: 30, y: 60, size: "160px", opacity: 0.15, delay: 5, duration: 16 },
-    { x: 80, y: 75, size: "180px", opacity: 0.11, delay: 2.5, duration: 19 },
-  ];
+
+  const finesse = "FINE$$E";
+
+  const searchBarVariants = {
+    focused: {
+      scale: 1.02,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+      },
+    },
+    unfocused: {
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+      },
+    },
+  };
+
+  const searchIconVariants = {
+    rest: { scale: 1 },
+    hover: { scale: 1.1, rotate: 15 },
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 via-green-100 to-white text-slate-900 flex items-center justify-center relative overflow-hidden">
-      {/* Dynamic background elements */}
+    <div className="min-h-screen bg-[#0a0d14] text-white flex items-center justify-center relative overflow-hidden">
+      {/* Dynamic Background */}
       <div className="absolute inset-0 overflow-hidden z-0">
-        {backgroundElements.map((el, index) => (
-          <BackgroundElement
-            key={index}
-            x={el.x}
-            y={el.y}
-            size={el.size}
-            opacity={el.opacity}
-            delay={el.delay}
-            duration={el.duration}
-          />
+        {/* Particle system */}
+        {Array.from({ length: 30 }).map((_, i) => (
+          <Particle key={i} index={i} />
         ))}
 
-        {/* Mesh overlay for depth */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0)_0%,rgba(255,255,255,0.8)_70%)]" />
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-green-950/30 via-gray-900/50 to-black/80" />
+
+        {/* Glowing circle in the center */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <motion.div
+            className="w-[600px] h-[600px] rounded-full bg-gradient-to-r from-green-500/5 to-green-600/5 blur-3xl"
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.4, 0.3],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        </div>
+
+        {/* Horizontal lines effect */}
+        <div className="absolute inset-0 overflow-hidden opacity-10">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-px w-full bg-gradient-to-r from-transparent via-green-500/30 to-transparent"
+              style={{ transform: `translateY(${i * 5}vh)` }}
+            />
+          ))}
+        </div>
       </div>
 
       <motion.section
@@ -112,51 +153,92 @@ const LandingPage = () => {
         animate={heroInView ? "visible" : "hidden"}
         className="px-4 py-20 max-w-7xl mx-auto text-center relative z-10"
       >
-        {" "}
-        <motion.h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-10 tracking-normal flex justify-center">
-          <span className="inline-flex overflow-visible">
+        <motion.h1 className="text-6xl md:text-8xl font-extrabold mb-10 tracking-wide">
+          <span className="inline-flex">
             {[...finesse].map((char, index) => (
               <motion.span
                 key={index}
                 variants={letterVariants}
                 custom={index}
-                className="text-green-600 relative z-10"
+                className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600"
                 style={{
                   display: "inline-block",
-                  padding: "0 0.02em", // Add slight padding to prevent cutting off
-                  margin: "0 0.01em", // Add slight margin between letters
-                  textShadow: "0 4px 16px rgba(74, 222, 128, 0.4)",
-                  background: "linear-gradient(to bottom, #22c55e, #16a34a)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
+                  margin: "0 0.05em",
+                  textShadow: "0 0 40px rgba(34, 197, 94, 0.5)",
                 }}
               >
                 {char}
               </motion.span>
             ))}
           </span>
-        </motion.h1>{" "}
+        </motion.h1>
+
         <motion.div
-          className="relative backdrop-blur-md bg-white/50 py-5 px-8 rounded-xl shadow-md mx-auto max-w-3xl"
           variants={fadeInUp}
+          className="relative py-5 px-8 rounded-2xl mx-auto max-w-3xl"
         >
-          <motion.p className="text-xl md:text-2xl text-slate-800 max-w-2xl mx-auto leading-relaxed font-medium">
-            Streamline your financial management with powerful tools and
-            AI-driven insights
-          </motion.p>
           <motion.div
-            className="absolute -z-10 w-full h-2 bg-gradient-to-r from-green-200 via-green-300 to-green-200 rounded-full left-0 bottom-0 opacity-70"
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ delay: 1.5, duration: 1.8, ease: "easeInOut" }}
-          />
-        </motion.div>{" "}
-        <motion.div
-          className="w-full max-w-md h-2 bg-gradient-to-r from-transparent via-green-400 to-transparent mx-auto mt-16 rounded-full shadow-green-500/50 shadow-sm"
-          initial={{ scaleX: 0, opacity: 0, transformOrigin: "center" }}
-          animate={{ scaleX: 1, opacity: 0.8 }}
-          transition={{ delay: 2.2, duration: 1.8 }}
-        />
+            className={`relative backdrop-blur-xl bg-gray-900/30 rounded-2xl p-2 border-2 transition-colors duration-300 ${
+              isFocused ? "border-green-500/50" : "border-green-500/10"
+            }`}
+            variants={searchBarVariants}
+            animate={isFocused ? "focused" : "unfocused"}
+          >
+            {/* Glow effect */}
+            <div
+              className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
+                isFocused ? "opacity-100" : "opacity-0"
+              }`}
+              style={{
+                background:
+                  "radial-gradient(circle at center, rgba(34, 197, 94, 0.15), transparent 70%)",
+                filter: "blur(10px)",
+                transform: "scale(1.05)",
+              }}
+            />
+
+            <div className="relative flex items-center space-x-4">
+              <div className="relative flex-grow">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-green-500/50">
+                  $
+                </div>
+                <input
+                  type="text"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value.toUpperCase())}
+                  placeholder="Enter a ticker..."
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  className="w-full py-3 pl-8 pr-4 rounded-xl bg-gray-800/50 text-white placeholder-gray-400 focus:outline-none text-lg tracking-wider"
+                  style={{ caretColor: "#22c55e" }}
+                />
+
+                {/* Animated underline */}
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 h-px bg-green-500"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: isFocused ? 1 : 0 }}
+                  transition={{ duration: 0.2 }}
+                />
+              </div>
+
+              <motion.button
+                className="p-4 bg-green-500 rounded-xl hover:bg-green-600 focus:outline-none relative group"
+                whileHover="hover"
+                whileTap={{ scale: 0.95 }}
+                variants={searchIconVariants}
+              >
+                <FaSearch className="text-white text-xl relative z-10" />
+                <motion.div
+                  className="absolute inset-0 rounded-xl bg-green-400 opacity-0 group-hover:opacity-30"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
       </motion.section>
     </div>
   );
