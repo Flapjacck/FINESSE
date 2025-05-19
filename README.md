@@ -15,9 +15,54 @@ FINESSE helps investors and traders stay informed by providing instant access to
 - Health check endpoint for monitoring
 - Live data from Yahoo Finance
 
+## Sentiment Analysis
+
+The API uses DistilBERT (specifically `distilbert-base-uncased-finetuned-sst-2-english`) for sentiment analysis of news headlines. 
+
+### How Sentiment Scoring Works
+
+Each news headline receives two sentiment indicators:
+
+1. **Label**: Either "POSITIVE" or "NEGATIVE"
+2. **Score**: A confidence value between 0 and 1
+   - Closer to 1 = Higher confidence
+   - Example: 0.9987 means 99.87% confidence in the classification
+
+### Understanding the Results
+
+- High scores (>0.95) indicate strong confidence in the sentiment classification
+- Same confidence scores can have different labels because:
+  - Question headlines often receive negative sentiment due to implied uncertainty
+  - Direct statements tend to receive positive sentiment
+  - The model analyzes full sentence structure and context
+  - Word choice and syntax affect classification
+
+### Example Interpretations
+
+```json
+{
+    "title": "Should Stock X Be in Your Portfolio?",
+    "sentiment": {
+        "label": "NEGATIVE",
+        "score": 0.998
+    }
+}
+```
+↑ Question format suggests uncertainty = Negative sentiment
+
+```json
+{
+    "title": "Stock X Among Best Performers",
+    "sentiment": {
+        "label": "POSITIVE",
+        "score": 0.999
+    }
+}
+```
+↑ Direct positive statement = Positive sentiment
+
 ## Coming Soon
 
-- AI-powered sentiment analysis of news headlines
 - Historical sentiment tracking
 - Web interface
 - Stock price correlation with news sentiment

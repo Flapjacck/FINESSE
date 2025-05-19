@@ -5,9 +5,13 @@ from flask_limiter.util import get_remote_address
 import yfinance as yf
 from datetime import datetime
 import re
+from utils.sentiment_analyzer import sentiment_analyzer
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Initialize sentiment analyzer when app starts
+sentiment_analyzer.initialize()
 
 # Configure rate limiting
 limiter = Limiter(
@@ -23,11 +27,20 @@ def validate_ticker(ticker):
         ticker (str): Stock ticker symbol
     Returns:
         bool: True if valid, False otherwise
+    
+    Supports:
+    - US tickers (e.g., AAPL, TSLA)
+    - International tickers with extensions (e.g., CLS.TO)
+    - Longer international tickers
+    - Tickers with hyphens
     """
     if not ticker or not isinstance(ticker, str):
         return False
-    # Basic ticker format validation (alphanumeric, 1-5 characters)
-    return bool(re.match(r'^[A-Za-z0-9]{1,5}$', ticker))
+    # Extended ticker format validation
+    # - Up to 8 characters for main symbol
+    # - Optional .XX or -XX suffix for international markets
+    # - No special characters except dots and hyphens
+    return bool(re.match(r'^[A-Za-z0-9]{1,8}(?:[.-][A-Za-z0-9]{1,4})?$', ticker))
 
 @app.route('/news', methods=['GET'])
 @limiter.limit("5 per minute")  # Specific rate limit for this endpoint
@@ -74,15 +87,19 @@ def get_stock_news():
                 provider = content.get('provider', {})
                 click_through = content.get('clickThroughUrl', {})
                 
-                # Enhanced news item with more metadata
+                # Get the title for sentiment analysis
+                title = content.get('title', '')
+                
+                # Enhanced news item with metadata and sentiment analysis
                 news_item = {
-                    'title': content.get('title'),
+                    'title': title,
                     'publisher': provider.get('displayName'),
                     'link': click_through.get('url'),
                     'published': content.get('pubDate'),
                     'summary': content.get('description', ''),
                     'source': provider.get('name'),
-                    'type': content.get('type', 'article')
+                    'type': content.get('type', 'article'),
+                    'sentiment': sentiment_analyzer.analyze_text(title)
                 }
                 
                 # Only append if we have required fields
