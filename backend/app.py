@@ -100,8 +100,7 @@ def get_stock_news():
                     'source': provider.get('name'),
                     'type': content.get('type', 'article')
                 }
-                
-                # Only include items with required fields
+                  # Only include items with required fields
                 if all(news_item[key] for key in ['title', 'link']) and title:
                     titles.append(title)
                     news_items.append(news_item)
@@ -115,22 +114,28 @@ def get_stock_news():
                 'error': f'No valid news articles found for {ticker}',
                 'status': 'error'
             }), 404
+
+        # Perform comprehensive stock analysis
+        analysis_results = sentiment_analyzer.analyze_stock(ticker, titles)
         
-        # Perform batch sentiment analysis
-        sentiments = sentiment_analyzer.analyze_batch(titles)
-        
-        # Combine news items with their sentiments
+        # Combine news items with their individual sentiments
         top_news = []
-        for item, sentiment in zip(news_items, sentiments):
+        for item, sentiment in zip(news_items, analysis_results['sentiment_analysis']['individual_sentiments']):
             item['sentiment'] = sentiment
             top_news.append(item)
-        
+
         return jsonify({
             'ticker': ticker,
             'count': len(top_news),
             'status': 'success',
             'timestamp': datetime.now().isoformat(),
-            'news': top_news
+            'news': top_news,
+            'analysis': {
+                'sentiment_summary': analysis_results['sentiment_analysis']['statistics'],
+                'technical_analysis': analysis_results['technical_analysis'],
+                'fundamentals': analysis_results['fundamentals'],
+                'recommendation': analysis_results['recommendation']
+            }
         })
     
     except Exception as e:
