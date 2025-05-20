@@ -1,12 +1,25 @@
 """
-Enhanced sentiment analysis module using DistilBERT model for analyzing news headlines and technical indicators.
-Includes caching, batch processing, technical analysis, and improved error handling.
+Enhanced sentiment analysis module for financial market analysis.
+
+This module combines multiple analysis techniques:
+1. News Sentiment Analysis using DistilBERT
+2. Technical Analysis using custom indicators
+3. Price Movement Prediction
+4. Fundamental Analysis integration
+
+Features:
+- Batch processing for efficient analysis
+- Caching for performance optimization
+- Comprehensive stock analysis combining multiple factors
+- Error handling and logging
+- Type hints for better code maintainability
 """
+
 from transformers import pipeline
 import torch
 from functools import lru_cache
 import logging
-from typing import Dict, List, Union, Optional, Any
+from typing import Dict, List, Union, Optional, Any, TypedDict
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
@@ -19,17 +32,54 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@dataclass
 class TechnicalIndicators:
-    """Technical indicators for stock analysis"""
-    rsi: float
-    sma_20: float
-    sma_50: float
-    sma_200: float
-    price_volatility: float
-    volume_trend: float
-    momentum: float
-    price: float
+    """Technical indicators for stock analysis with their interpretations"""
+    
+    def __init__(self, 
+                 rsi: float,
+                 sma_20: float,
+                 sma_50: float,
+                 sma_200: float,
+                 price_volatility: float,
+                 volume_trend: float,
+                 momentum: float,
+                 price: float):
+        """
+        Initialize technical indicators with calculated values.
+        
+        Args:
+            rsi: Relative Strength Index (0-100)
+            sma_20: 20-day Simple Moving Average
+            sma_50: 50-day Simple Moving Average
+            sma_200: 200-day Simple Moving Average
+            price_volatility: Price volatility as percentage
+            volume_trend: Volume trend as percentage change
+            momentum: Price momentum as percentage
+            price: Current stock price
+        """
+        self.rsi = rsi
+        self.sma_20 = sma_20
+        self.sma_50 = sma_50
+        self.sma_200 = sma_200
+        self.price_volatility = price_volatility
+        self.volume_trend = volume_trend
+        self.momentum = momentum
+        self.price = price
+    
+    def get_signals(self) -> Dict[str, str]:
+        """
+        Get trading signals based on technical indicators.
+        
+        Returns:
+            Dict[str, str]: Dictionary of signal names and their values
+        """
+        return {
+            'rsi': 'oversold' if self.rsi < 30 else 'overbought' if self.rsi > 70 else 'neutral',
+            'trend': 'bullish' if self.sma_20 > self.sma_50 else 'bearish',
+            'long_term': 'bullish' if self.price > self.sma_200 else 'bearish',
+            'volume': 'bullish' if self.volume_trend > 10 else 'bearish' if self.volume_trend < -10 else 'neutral',
+            'momentum': 'bullish' if self.momentum > 0 else 'bearish'
+        }
 
 class SentimentAnalyzer:
     def __init__(self, model_name: str = "distilbert-base-uncased-finetuned-sst-2-english",
@@ -253,28 +303,16 @@ class SentimentAnalyzer:
             'confidence': self._calculate_confidence(result['score'])
         }
 
-    def _calculate_rsi(self, prices: np.ndarray, periods: int = 14) -> float:
-        """Calculate Relative Strength Index"""
-        deltas = np.diff(prices)
-        gain = np.where(deltas > 0, deltas, 0)
-        loss = np.where(deltas < 0, -deltas, 0)
-        
-        avg_gain = np.mean(gain[-periods:])
-        avg_loss = np.mean(loss[-periods:])
-        
-        if avg_loss == 0:
-            return 100
-        
-        rs = avg_gain / avg_loss
-        return 100 - (100 / (1 + rs))
-
-    def _calculate_sma(self, data: np.ndarray, window: int) -> float:
-        """Calculate Simple Moving Average"""
-        return np.mean(data[-window:])
-
     def _calculate_technical_indicators(self, ticker: str) -> Optional[TechnicalIndicators]:
         """
-        Calculate technical indicators without external TA libraries.
+        Calculate technical indicators for stock analysis.
+        
+        Calculates:
+        - RSI (Relative Strength Index)
+        - Moving Averages (20, 50, 200 day)
+        - Price Volatility
+        - Volume Trend
+        - Price Momentum
         
         Args:
             ticker (str): Stock ticker symbol
@@ -283,9 +321,18 @@ class SentimentAnalyzer:
             Optional[TechnicalIndicators]: Technical indicators if successful, None otherwise
         """
         try:
-            # Fetch historical data
-            stock = yf.Ticker(ticker)
-            hist = stock.history(period="1y")
+            # Fetch historical data with retry mechanism
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    stock = yf.Ticker(ticker)
+                    hist = stock.history(period="1y")
+                    break
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise e
+                    logger.warning(f"Retry {attempt + 1} fetching data for {ticker}")
+                    continue
             
             if len(hist) < 200:
                 logger.warning(f"Insufficient historical data for {ticker}")
@@ -295,20 +342,16 @@ class SentimentAnalyzer:
             volumes = hist['Volume'].values
             current_price = prices[-1]
             
-            # Calculate indicators
+            # Calculate core technical indicators
             rsi = self._calculate_rsi(prices)
-            sma_20 = self._calculate_sma(prices, 20)
-            sma_50 = self._calculate_sma(prices, 50)
-            sma_200 = self._calculate_sma(prices, 200)
+            sma_20 = np.mean(prices[-20:])
+            sma_50 = np.mean(prices[-50:])
+            sma_200 = np.mean(prices[-200:])
             
-            # Calculate volatility (20-day standard deviation)
+            # Calculate advanced metrics
             volatility = np.std(prices[-20:]) / np.mean(prices[-20:]) * 100
-            
-            # Calculate volume trend (comparing current volume to 20-day average)
-            volume_sma = self._calculate_sma(volumes, 20)
+            volume_sma = np.mean(volumes[-20:])
             volume_trend = (volumes[-1] / volume_sma - 1) * 100
-            
-            # Calculate momentum (percentage change over 14 days)
             momentum = ((prices[-1] / prices[-14]) - 1) * 100
             
             return TechnicalIndicators(
@@ -326,55 +369,75 @@ class SentimentAnalyzer:
             logger.error(f"Error calculating technical indicators for {ticker}: {str(e)}")
             return None
 
+    def _calculate_rsi(self, prices: np.ndarray, periods: int = 14) -> float:
+        """
+        Calculate the Relative Strength Index.
+        
+        Args:
+            prices (np.ndarray): Array of price data
+            periods (int): Number of periods for RSI calculation
+            
+        Returns:
+            float: RSI value between 0 and 100
+        """
+        deltas = np.diff(prices)
+        seed = deltas[:periods+1]
+        up = seed[seed >= 0].sum()/periods
+        down = -seed[seed < 0].sum()/periods
+        
+        if down == 0:
+            return 100
+        
+        rs = up/down
+        return 100 - (100/(1+rs))
+
     def predict_stock_movement(self, ticker: str, indicators: TechnicalIndicators, sentiment_score: float) -> Dict[str, Any]:
         """
-        Predict future price movement based on technical indicators and sentiment.
+        Predict future stock movement based on technical and sentiment analysis.
+        
+        Methodology:
+        1. Analyze technical signals (RSI, Moving Averages, Volume)
+        2. Combine with sentiment analysis
+        3. Calculate confidence based on signal agreement
+        4. Generate detailed recommendation
         
         Args:
             ticker (str): Stock ticker symbol
             indicators (TechnicalIndicators): Technical indicators
-            sentiment_score (float): Current sentiment score
+            sentiment_score (float): Overall sentiment score
             
         Returns:
-            Dict[str, Any]: Prediction results
+            Dict[str, Any]: Detailed prediction including:
+                - Technical scores
+                - Combined analysis
+                - Recommendation
+                - Confidence metrics
         """
         try:
-            # Calculate technical signals
-            tech_signals = {
-                'rsi_signal': 'oversold' if indicators.rsi < 30 else 'overbought' if indicators.rsi > 70 else 'neutral',
-                'trend_signal': 'bullish' if indicators.sma_20 > indicators.sma_50 else 'bearish',
-                'long_term_trend': 'bullish' if indicators.price > indicators.sma_200 else 'bearish',
-                'volume_signal': 'bullish' if indicators.volume_trend > 10 else 'bearish' if indicators.volume_trend < -10 else 'neutral',
-                'momentum_signal': 'bullish' if indicators.momentum > 0 else 'bearish'
-            }
+            # Get technical signals
+            tech_signals = indicators.get_signals()
             
-            # Calculate scores for each component (-1 to 1)
+            # Calculate component scores
             technical_scores = {
-                'rsi_score': (50 - indicators.rsi) / 50,  # Normalized RSI
-                'trend_score': (indicators.sma_20 / indicators.sma_50 - 1) * 2,  # Normalized trend
-                'volume_score': np.clip(indicators.volume_trend / 50, -1, 1),  # Normalized volume trend
-                'momentum_score': np.clip(indicators.momentum / 10, -1, 1)  # Normalized momentum
+                'rsi': (50 - indicators.rsi) / 50,
+                'trend': (indicators.sma_20 / indicators.sma_50 - 1) * 2,
+                'volume': np.clip(indicators.volume_trend / 50, -1, 1),
+                'momentum': np.clip(indicators.momentum / 10, -1, 1)
             }
             
-            # Calculate overall technical score
+            # Calculate overall scores
             tech_score = np.mean(list(technical_scores.values()))
-            
-            # Combine technical and sentiment scores
             combined_score = (tech_score + sentiment_score) / 2
             
-            # Calculate confidence based on agreement between signals
-            signal_agreement = len(set(tech_signals.values()))  # How many unique signals
-            confidence = 1 - (signal_agreement - 1) / (len(tech_signals) - 1)  # Normalize to 0-1
+            # Calculate confidence
+            signal_agreement = len(set(tech_signals.values()))
+            confidence = 1 - (signal_agreement - 1) / (len(tech_signals) - 1)
             
             return {
-                'technical_score': round(tech_score, 3),
-                'combined_score': round(combined_score, 3),
-                'prediction': 'strong_buy' if combined_score > 0.6 else
-                             'buy' if combined_score > 0.2 else
-                             'sell' if combined_score < -0.2 else
-                             'strong_sell' if combined_score < -0.6 else
-                             'hold',
-                'confidence': round(confidence, 3),
+                'technical_score': round(tech_score, 4),
+                'combined_score': round(combined_score, 4),
+                'prediction': self._get_prediction_label(combined_score),
+                'confidence': round(confidence, 4),
                 'signals': tech_signals,
                 'metrics': {
                     'price': round(indicators.price, 2),
@@ -387,6 +450,10 @@ class SentimentAnalyzer:
                     'sma_20': round(indicators.sma_20, 2),
                     'sma_50': round(indicators.sma_50, 2),
                     'sma_200': round(indicators.sma_200, 2)
+                },
+                'relative_strength': {
+                    'short_term': round((indicators.sma_20 / indicators.sma_50 - 1) * 100, 2),
+                    'long_term': round((indicators.sma_50 / indicators.sma_200 - 1) * 100, 2)
                 }
             }
             
@@ -397,6 +464,26 @@ class SentimentAnalyzer:
                 'confidence': 0,
                 'error': str(e)
             }
+
+    def _get_prediction_label(self, score: float) -> str:
+        """
+        Convert numerical score to prediction label.
+        
+        Args:
+            score (float): Combined analysis score
+            
+        Returns:
+            str: Prediction label
+        """
+        if score > 0.6:
+            return 'strong_buy'
+        elif score > 0.2:
+            return 'buy'
+        elif score < -0.6:
+            return 'strong_sell'
+        elif score < -0.2:
+            return 'sell'
+        return 'hold'
 
     def analyze_stock(self, ticker: str, news_titles: List[str]) -> Dict[str, Any]:
         """

@@ -3,17 +3,39 @@ A simple yet powerful Flask-based API that delivers real-time stock news headlin
 
 ## 🌟 Overview
 
-FINESSE helps investors and traders stay informed by providing instant access to the latest news headlines for any stock ticker. Built with Python and Flask, it leverages the `yfinance` library to fetch accurate and up-to-date financial news.
+FINESSE is an advanced stock analysis platform that combines news sentiment analysis, technical indicators, and fundamental metrics to provide comprehensive trading insights. Built with Python and Flask, it leverages machine learning and financial analysis to help investors make informed decisions.
 
-## Features
+### Key Features
 
-- Real-time stock news retrieval with customizable limits
-- Rate limiting for API protection
-- CORS support for web applications
-- Input validation and error handling
-- Detailed metadata for each news article
-- Health check endpoint for monitoring
-- Live data from Yahoo Finance
+🔍 **Comprehensive Analysis**
+- Real-time news sentiment analysis
+- Technical indicators and trading signals
+- Fundamental metrics and health scoring
+- Smart trading recommendations
+
+📊 **Technical Analysis**
+- RSI and MACD indicators
+- Multiple timeframe moving averages
+- Volume trend analysis
+- Price momentum tracking
+
+🤖 **Sentiment Analysis**
+- Natural language processing of news
+- Confidence-weighted scoring
+- Trend detection
+- Aggregated market sentiment
+
+📈 **Smart Recommendations**
+- AI-driven trading signals
+- Multi-factor analysis
+- Confidence scoring
+- Human-readable summaries
+
+🎯 **Decision Support**
+- Company health scoring
+- Market trend analysis
+- Risk assessment
+- Performance metrics
 
 ## Sentiment Analysis
 
@@ -95,7 +117,7 @@ python -m venv venv
 
 ```powershell
 cd backend
-pip install flask yfinance
+pip install flask flask-cors flask-limiter yfinance transformers torch numpy pandas
 ```
 
 4. Run the server:
@@ -127,14 +149,14 @@ Response:
 ```json
 {
     "status": "healthy",
-    "timestamp": "2025-05-18T10:00:00.000Z",
+    "timestamp": "2025-05-20T10:00:00.000Z",
     "version": "1.0.0"
 }
 ```
 
-### Get Stock News
+### Get Stock Analysis and News
 
-Retrieve news articles for a specific stock ticker.
+Retrieve comprehensive stock analysis including news articles, technical indicators, sentiment analysis, and trading recommendations.
 
 ```
 GET /news?ticker={symbol}&limit={count}
@@ -154,24 +176,131 @@ Success Response:
 
 ```json
 {
-    "ticker": "AAPL",
-    "count": 10,
-    "status": "success",
-    "timestamp": "2025-05-18T10:00:00.000Z",
-    "news": [
-        {
-            "title": "Example News Title",
-            "publisher": "Publisher Name",
-            "link": "https://example.com/news",
-            "published": "2025-05-18T09:00:00.000Z",
-            "summary": "News article summary...",
-            "source": "Source Name",
-            "type": "article"
+    "meta": {
+        "ticker": "AAPL",
+        "count": 10,
+        "status": "success",
+        "timestamp": "2025-05-20T10:00:00.000Z",
+        "request_id": "AAPL-20250520-100000"
+    },
+    "data": {
+        "news": [
+            {
+                "title": "Example News Title",
+                "publisher": "Publisher Name",
+                "link": "https://example.com/news",
+                "published": "2025-05-20T09:30:00.000Z",
+                "summary": "News article summary...",
+                "source": "Source Name",
+                "type": "article",
+                "sentiment": {
+                    "label": "positive",
+                    "score": 0.9234,
+                    "nuanced_score": 0.8567,
+                    "confidence": "very high"
+                }
+            }
+        ],
+        "analysis": {
+            "sentiment": {
+                "summary": {
+                    "positive_percentage": 75.5,
+                    "negative_percentage": 15.5,
+                    "neutral_percentage": 9.0,
+                    "overall_sentiment": 0.654,
+                    "average_confidence": 0.891
+                },
+                "trend": {
+                    "direction": "positive",
+                    "strength": 0.654,
+                    "confidence": 0.891
+                }
+            },
+            "technical": {
+                "indicators": {
+                    "rsi": 65.4,
+                    "macd": {
+                        "value": 2.45,
+                        "signal": 1.89,
+                        "histogram": 0.56
+                    },
+                    "moving_averages": {
+                        "sma_20": 185.45,
+                        "sma_50": 180.67,
+                        "sma_200": 175.89
+                    }
+                },
+                "signals": {
+                    "rsi": "neutral",
+                    "trend": "bullish",
+                    "momentum": "bullish",
+                    "volume": "neutral"
+                },
+                "momentum": {
+                    "short_term": 2.67,
+                    "long_term": 5.45
+                }
+            },
+            "fundamental": {
+                "metrics": {
+                    "pe_ratio": 28.5,
+                    "market_cap": 2950000000000,
+                    "beta": 1.21,
+                    "dividend_yield": 0.0065,
+                    "revenue_growth": 0.15,
+                    "profit_margins": 0.25
+                },
+                "health_score": 0.8756
+            }
+        },
+        "recommendation": {
+            "action": "STRONG_BUY",
+            "confidence": 0.8912,
+            "factors": {
+                "sentiment": 0.654,
+                "technical": 0.789,
+                "combined": 0.721
+            },
+            "summary": "Strong buy recommendation based on bullish technical signals (momentum, trend) and positive market sentiment"
         }
-        // ... more news items
-    ]
+    }
 }
 ```
+
+Error Response:
+```json
+{
+    "error": "Error message here",
+    "status": "error"
+}
+```
+
+#### Analysis Components
+
+1. **Sentiment Analysis**
+   - News sentiment scoring (-1 to 1)
+   - Confidence levels
+   - Trend analysis
+   - Aggregated statistics
+
+2. **Technical Analysis**
+   - RSI (Relative Strength Index)
+   - Moving Averages (20, 50, 200 day)
+   - Volume Analysis
+   - Momentum Indicators
+   - Trading Signals
+
+3. **Fundamental Analysis**
+   - Key Financial Metrics
+   - Market Position
+   - Growth Indicators
+   - Company Health Score
+
+4. **Recommendations**
+   - Action (STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL)
+   - Confidence Score
+   - Contributing Factors
+   - Human-readable Summary
 
 Rate Limits:
 
