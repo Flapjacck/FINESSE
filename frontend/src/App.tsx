@@ -1,5 +1,6 @@
 import "./App.css";
 import LandingPage from "./components/pages/landing";
+import { StockTest } from "./components/StockTest";
 
 function App() {
   return (

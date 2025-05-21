@@ -169,7 +169,7 @@ Parameters:
 
 Example:
 ```
-http://localhost:5000/news?ticker=AAPL&limit=10
+http://localhost:5000/analyze?ticker=AAPL&limit=10
 ```
 
 Success Response:
