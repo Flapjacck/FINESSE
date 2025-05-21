@@ -1,12 +1,12 @@
 import { motion, useAnimationFrame } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { FaSearch } from "react-icons/fa";
 import { useRef, useState } from "react";
+import SearchBar from "../SearchBar";
 
 // Particle component for background
 const Particle = ({ index }: { index: number }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(() => ({
+  const [position, setPosition] = useState<{ x: number; y: number }>(() => ({
     x: Math.random() * 100,
     y: Math.random() * 100,
   }));
@@ -19,11 +19,14 @@ const Particle = ({ index }: { index: number }) => {
       x: position.x + Math.cos(angle) * speed * 0.1,
       y: position.y + Math.sin(angle) * speed * 0.1,
     });
-
-    if (position.x < 0) setPosition((p) => ({ ...p, x: 100 }));
-    if (position.x > 100) setPosition((p) => ({ ...p, x: 0 }));
-    if (position.y < 0) setPosition((p) => ({ ...p, y: 100 }));
-    if (position.y > 100) setPosition((p) => ({ ...p, y: 0 }));
+    if (position.x < 0)
+      setPosition((p: { x: number; y: number }) => ({ ...p, x: 100 }));
+    if (position.x > 100)
+      setPosition((p: { x: number; y: number }) => ({ ...p, x: 0 }));
+    if (position.y < 0)
+      setPosition((p: { x: number; y: number }) => ({ ...p, y: 100 }));
+    if (position.y > 100)
+      setPosition((p: { x: number; y: number }) => ({ ...p, y: 0 }));
   });
 
   return (
@@ -52,9 +55,6 @@ const LandingPage = () => {
     threshold: 0.1,
   });
 
-  const [isFocused, setIsFocused] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-
   const letterVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: (i: number) => ({
@@ -82,30 +82,6 @@ const LandingPage = () => {
   };
 
   const finesse = "FINE$$E";
-
-  const searchBarVariants = {
-    focused: {
-      scale: 1.02,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 20,
-      },
-    },
-    unfocused: {
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 20,
-      },
-    },
-  };
-
-  const searchIconVariants = {
-    rest: { scale: 1 },
-    hover: { scale: 1.1, rotate: 15 },
-  };
 
   return (
     <div className="min-h-screen bg-[#0a0d14] text-white flex items-center justify-center relative overflow-hidden">
@@ -177,67 +153,7 @@ const LandingPage = () => {
           variants={fadeInUp}
           className="relative py-5 px-8 rounded-2xl mx-auto max-w-3xl"
         >
-          <motion.div
-            className={`relative backdrop-blur-xl bg-gray-900/30 rounded-2xl p-2 border-2 transition-colors duration-300 ${
-              isFocused ? "border-green-500/50" : "border-green-500/10"
-            }`}
-            variants={searchBarVariants}
-            animate={isFocused ? "focused" : "unfocused"}
-          >
-            {/* Glow effect */}
-            <div
-              className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
-                isFocused ? "opacity-100" : "opacity-0"
-              }`}
-              style={{
-                background:
-                  "radial-gradient(circle at center, rgba(34, 197, 94, 0.15), transparent 70%)",
-                filter: "blur(10px)",
-                transform: "scale(1.05)",
-              }}
-            />
-
-            <div className="relative flex items-center space-x-4">
-              <div className="relative flex-grow">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-green-500/50">
-                  $
-                </div>
-                <input
-                  type="text"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value.toUpperCase())}
-                  placeholder="Enter a ticker..."
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  className="w-full py-3 pl-8 pr-4 rounded-xl bg-gray-800/50 text-white placeholder-gray-400 focus:outline-none text-lg tracking-wider"
-                  style={{ caretColor: "#22c55e" }}
-                />
-
-                {/* Animated underline */}
-                <motion.div
-                  className="absolute bottom-0 left-0 right-0 h-px bg-green-500"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: isFocused ? 1 : 0 }}
-                  transition={{ duration: 0.2 }}
-                />
-              </div>
-
-              <motion.button
-                className="p-4 bg-green-500 rounded-xl hover:bg-green-600 focus:outline-none relative group"
-                whileHover="hover"
-                whileTap={{ scale: 0.95 }}
-                variants={searchIconVariants}
-              >
-                <FaSearch className="text-white text-xl relative z-10" />
-                <motion.div
-                  className="absolute inset-0 rounded-xl bg-green-400 opacity-0 group-hover:opacity-30"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.2 }}
-                />
-              </motion.button>
-            </div>
-          </motion.div>
+          <SearchBar darkMode={true} />
         </motion.div>
       </motion.section>
     </div>

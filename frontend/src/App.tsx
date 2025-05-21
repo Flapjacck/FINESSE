@@ -1,11 +1,16 @@
 import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./components/pages/landing";
+import StockPage from "./components/pages/stock";
 
 function App() {
   return (
-    <div className="app min-h-screen bg-gradient-to-b from-green-50 via-green-100 to-white">
-      <LandingPage />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/stock/:symbol" element={<StockPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
