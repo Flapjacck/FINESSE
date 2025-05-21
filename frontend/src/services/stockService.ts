@@ -1,4 +1,4 @@
-import type { StockData, StockError, StockSearchResult, StockInterval, HistoricalData } from '../types/stock';
+import type { StockAnalysisResponse, StockError } from '../types/stock';
 
 const API_BASE_URL = 'http://localhost:5000';
 
@@ -17,19 +17,12 @@ export class StockService {
         return data;
     }
 
-    static async getStockData(symbol: string): Promise<StockData> {
-        return this.fetchWithError(`${API_BASE_URL}/stock/${symbol}`);
-    }
-
-    static async searchStocks(query: string): Promise<StockSearchResult[]> {
-        return this.fetchWithError(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
-    }
-
-    static async getHistoricalData(symbol: string, interval: StockInterval): Promise<HistoricalData[]> {
-        return this.fetchWithError(`${API_BASE_URL}/stock/${symbol}/history/${interval}`);
-    }
-
-    static async getStockSentiment(symbol: string): Promise<StockData['sentiment']> {
-        return this.fetchWithError(`${API_BASE_URL}/stock/${symbol}/sentiment`);
+    static async getStockAnalysis(symbol: string, limit?: number): Promise<StockAnalysisResponse> {
+        const url = new URL(`${API_BASE_URL}/stock/analysis`);
+        url.searchParams.append('ticker', symbol);
+        if (limit) {
+            url.searchParams.append('limit', limit.toString());
+        }
+        return this.fetchWithError(url.toString());
     }
 }
