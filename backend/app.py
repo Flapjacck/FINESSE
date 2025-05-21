@@ -139,11 +139,11 @@ def validate_ticker(ticker):
     # - No special characters except dots and hyphens
     return bool(re.match(r'^[A-Za-z0-9]{1,8}(?:[.-][A-Za-z0-9]{1,4})?$', ticker))
 
-@app.route('/news', methods=['GET'])
+@app.route('/stock/analysis', methods=['GET'])
 @limiter.limit("5 per minute")  # Specific rate limit for this endpoint
-def get_stock_news():
+def get_stock_analysis():
     """
-    Fetch latest news articles for a given stock ticker.
+    Fetch latest news articles and comprehensive analysis for a given stock ticker.
     Query Parameters:
         ticker (str): Stock ticker symbol (required)
         limit (int): Number of news articles to return (optional, default=15, max=50)

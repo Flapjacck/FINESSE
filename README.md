@@ -1,4 +1,5 @@
 # FINESSE
+
 A simple yet powerful Flask-based API that delivers real-time stock news headlines using Yahoo Finance data.
 
 ## 🌟 Overview
@@ -8,30 +9,35 @@ FINESSE is an advanced stock analysis platform that combines news sentiment anal
 ### Key Features
 
 🔍 **Comprehensive Analysis**
+
 - Real-time news sentiment analysis
 - Technical indicators and trading signals
 - Fundamental metrics and health scoring
 - Smart trading recommendations
 
 📊 **Technical Analysis**
+
 - RSI and MACD indicators
 - Multiple timeframe moving averages
 - Volume trend analysis
 - Price momentum tracking
 
 🤖 **Sentiment Analysis**
+
 - Natural language processing of news
 - Confidence-weighted scoring
 - Trend detection
 - Aggregated market sentiment
 
 📈 **Smart Recommendations**
+
 - AI-driven trading signals
 - Multi-factor analysis
 - Confidence scoring
 - Human-readable summaries
 
 🎯 **Decision Support**
+
 - Company health scoring
 - Market trend analysis
 - Risk assessment
@@ -146,6 +152,7 @@ http://localhost:5000/health
 ```
 
 Response:
+
 ```json
 {
     "status": "healthy",
@@ -159,7 +166,7 @@ Response:
 Retrieve comprehensive stock analysis including news articles, technical indicators, sentiment analysis, and trading recommendations.
 
 ```
-GET /news?ticker={symbol}&limit={count}
+GET /stock/analysis?ticker={symbol}&limit={count}
 ```
 
 Parameters:
@@ -169,7 +176,7 @@ Parameters:
 
 Example:
 ```
-http://localhost:5000/analyze?ticker=AAPL&limit=10
+http://localhost:5000/stock/analysis?ticker=AAPL&limit=10
 ```
 
 Success Response:
@@ -268,6 +275,7 @@ Success Response:
 ```
 
 Error Response:
+
 ```json
 {
     "error": "Error message here",
