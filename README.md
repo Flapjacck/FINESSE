@@ -14,7 +14,7 @@ FINESSE is a modern stock market data platform that delivers comprehensive finan
 - Python 3.8 or higher
 - pip package manager
 
-### Installation
+### Backend Setup
 
 1. Clone the repository:
 
@@ -26,6 +26,7 @@ cd finesse
 2. Create and activate a virtual environment:
 
 ```powershell
+cd backend
 python -m venv venv
 .\venv\Scripts\activate
 ```
@@ -33,14 +34,15 @@ python -m venv venv
 3. Install required packages:
 
 ```powershell
-cd backend
-pip install flask flask-cors flask-limiter yfinance transformers torch numpy pandas
+# Upgrade pip first
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
 4. Run the server:
 
 ```powershell
-python app.py
+py app.py
 ```
 
 The server will start at `http://127.0.0.1:5000`
@@ -94,7 +96,7 @@ Example Response:
 Get comprehensive stock data for a specific ticker symbol.
 
 ```http
-GET /stock/data?ticker={symbol}
+GET http://127.0.0.1:5000/stock/data?ticker={symbol}
 ```
 
 Parameters:
@@ -133,10 +135,10 @@ Error Response:
 
 ### Get Stock Prediction
 
-Get stock movement prediction for a specific ticker symbol.
+Get stock movement prediction for a specific ticker symbol using technical analysis and machine learning.
 
 ```http
-GET /stock/prediction?ticker={symbol}
+GET http://127.0.0.1:5000/stock/prediction?ticker={symbol}
 ```
 
 Parameters:
@@ -155,9 +157,10 @@ Example Response:
         "confidence_score": 85.42,
         "prediction_date": "2025-05-22",
         "metrics": {
-            "average_price_30d": 172.30,
-            "volatility_30d": 2.15,
-            "recent_trend": 1.85
+            "rsi": 65.30,
+            "macd": 2.15,
+            "volume_ratio": 1.25,
+            "ml_predicted_price": 178.50
         }
     }
 }
