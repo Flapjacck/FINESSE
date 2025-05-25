@@ -135,11 +135,20 @@ Error Response:
 
 ### Get Stock Prediction
 
-Get stock movement prediction for a specific ticker symbol using technical analysis and machine learning.
+Get advanced stock price predictions using machine learning and technical analysis.
 
 ```http
 GET http://127.0.0.1:5000/stock/prediction?ticker={symbol}
 ```
+
+This endpoint uses a sophisticated ensemble of machine learning models and technical indicators to predict stock price movements. The prediction system includes:
+
+- 2 years of historical data analysis
+- Multiple technical indicators (RSI, MACD, Bollinger Bands, etc.)
+- Advanced momentum and trend analysis
+- Ensemble ML models (Random Forest, XGBoost, Gradient Boosting)
+- Time series cross-validation
+- Dynamic model weighting based on performance
 
 Parameters:
 
@@ -149,22 +158,59 @@ Example Response:
 
 ```json
 {
-    "status": "success",
-    "data": {
-        "ticker": "AAPL",
-        "current_price": 175.50,
-        "predicted_direction": "upward",
-        "confidence_score": 85.42,
-        "prediction_date": "2025-05-22",
-        "metrics": {
-            "rsi": 65.30,
-            "macd": 2.15,
-            "volume_ratio": 1.25,
-            "ml_predicted_price": 178.50
-        }
+  "data": {
+    "confidence": 0.9490711014853327,
+    "current_price": 163.99000549316406,
+    "model_metrics": {
+      "avg_gb_mape": 0.12209361041418505,
+      "avg_rf_mape": 0.13017329335440375,
+      "avg_xgb_mape": 0.1454700128365251
+    },
+    "predicted_price": 122.19888626062838,
+    "prediction_interval": {
+      "lower": 57.15579293348053,
+      "upper": 187.24197958777626
+    },
+    "technical_signals": {
+      "adx_trend_strength": 2597.9239502754817,
+      "macd_signal": "bullish",
+      "rsi_signal": "overbought",
+      "volatility": 0.5711223344851456,
+      "volume_trend": "decreasing"
+    },
+    "trend": {
+      "direction": "down",
+      "market_context": "bullish",
+      "momentum": 5.364948686880422,
+      "resistance_level": 146.34227668762207,
+      "strength": 0.2548394282130672,
+      "support_level": 135.37771690368652
     }
+  },
+  "status": "success"
 }
 ```
+
+Response Fields:
+
+- `current_price`: Current stock price
+- `predicted_price`: ML model ensemble's price prediction
+- `confidence`: Prediction confidence score (0-1)
+- `prediction_interval`: 95% confidence interval for the prediction
+- `trend`:
+  - `direction`: Price trend direction
+  - `strength`: Trend strength indicator
+  - `momentum`: Short-term price momentum
+  - `market_context`: Overall market trend
+  - `support_level`: Key support price level
+  - `resistance_level`: Key resistance price level
+- `technical_signals`:
+  - `rsi_signal`: RSI-based market condition
+  - `macd_signal`: MACD trend signal
+  - `adx_trend_strength`: ADX trend strength (0-100)
+  - `volume_trend`: Volume trend analysis
+  - `volatility`: Annualized volatility
+- `model_metrics`: Performance metrics for each model (MAPE)
 
 Error Response:
 
