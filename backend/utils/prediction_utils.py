@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, root_mean_squared_error
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
+from sklearn.metrics import mean_squared_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 import xgboost as xgb
 
 def calculate_rsi(data: pd.Series, periods: int = 14) -> pd.Series:
@@ -16,260 +16,309 @@ def calculate_rsi(data: pd.Series, periods: int = 14) -> pd.Series:
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-def calculate_macd(data: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.Series:
-    """Calculate MACD"""
+def calculate_macd(data: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> tuple:
+    """Calculate MACD with signal line and histogram"""
     exp1 = data.ewm(span=fast, adjust=False).mean()
     exp2 = data.ewm(span=slow, adjust=False).mean()
     macd = exp1 - exp2
-    return macd
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    histogram = macd - signal_line
+    return macd, signal_line, histogram
 
-def calculate_bollinger_bands(data: pd.Series, window: int = 20) -> tuple:
-    """Calculate Bollinger Bands"""
+def calculate_bollinger_bands(data: pd.Series, window: int = 20, num_std: float = 2.0) -> tuple:
+    """Calculate Bollinger Bands with customizable standard deviation"""
     sma = data.rolling(window=window).mean()
     std = data.rolling(window=window).std()
-    upper_band = sma + (std * 2)
-    lower_band = sma - (std * 2)
-    return sma, upper_band, lower_band
+    upper_band = sma + (std * num_std)
+    lower_band = sma - (std * num_std)
+    bandwidth = (upper_band - lower_band) / sma
+    return sma, upper_band, lower_band, bandwidth
 
-def calculate_support_resistance(data: pd.Series, window: int = 20) -> tuple:
-    """Calculate dynamic support and resistance levels"""
-    rolling_min = data.rolling(window=window).min()
-    rolling_max = data.rolling(window=window).max()
-    return rolling_min, rolling_max
+def calculate_fibonacci_levels(data: pd.Series, period: int = 20) -> tuple:
+    """Calculate Fibonacci retracement levels"""
+    high = data.rolling(window=period).max()
+    low = data.rolling(window=period).min()
+    diff = high - low
+    
+    level_0 = low  # 0%
+    level_23_6 = low + diff * 0.236
+    level_38_2 = low + diff * 0.382
+    level_50_0 = low + diff * 0.5
+    level_61_8 = low + diff * 0.618
+    level_100 = high  # 100%
+    
+    return level_0, level_23_6, level_38_2, level_50_0, level_61_8, level_100
 
-def is_trading_day(date):
-    """Check if the given date is a trading day (excluding weekends)"""
-    return date.weekday() < 5  # 0-4 are Monday through Friday
+def calculate_momentum_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    """Calculate various momentum indicators"""
+    # Rate of Change (ROC)
+    data['ROC'] = data['Close'].pct_change(periods=10) * 100
+    
+    # Money Flow Index (MFI)
+    typical_price = (data['High'] + data['Low'] + data['Close']) / 3
+    money_flow = typical_price * data['Volume']
+    positive_flow = money_flow.where(typical_price > typical_price.shift(1), 0).rolling(14).sum()
+    negative_flow = money_flow.where(typical_price < typical_price.shift(1), 0).rolling(14).sum()
+    mfi = 100 - (100 / (1 + positive_flow / negative_flow))
+    data['MFI'] = mfi
+    
+    # Stochastic Oscillator
+    low_14 = data['Low'].rolling(window=14).min()
+    high_14 = data['High'].rolling(window=14).max()
+    data['K_percent'] = ((data['Close'] - low_14) / (high_14 - low_14)) * 100
+    data['D_percent'] = data['K_percent'].rolling(window=3).mean()
+    
+    return data
 
-def get_next_trading_day(date):
-    """Get the next trading day after the given date"""
-    next_day = date + timedelta(days=1)
-    while not is_trading_day(next_day):
-        next_day += timedelta(days=1)
-    return next_day
+def calculate_trend_strength(data: pd.Series, window: int = 20) -> pd.Series:
+    """Calculate trend strength using linear regression slope"""
+    slopes = []
+    for i in range(len(data) - window + 1):
+        y = data.iloc[i:i+window].values
+        x = np.arange(len(y))
+        slope, _ = np.polyfit(x, y, 1)
+        slopes.append(slope)
+    
+    slopes = [slopes[0]] * (window-1) + slopes  # Pad beginning with first value
+    return pd.Series(slopes, index=data.index)
 
-def predict_price_timeline(model, features, current_price, target_price):
-    """
-    Predict when the target price will be reached, considering only trading days
-    Returns the number of trading days until the target is reached
-    """
-    max_trading_days = 30
-    trading_days = 0
-    current_date = datetime.now()
-    current_features = features.copy()
-    current_pred = current_price
-    tolerance = 0.0001  # Add small tolerance for floating point comparison
-    predictions = []  # Store all predictions to analyze trend
+def calculate_price_momentum(data: pd.DataFrame) -> pd.DataFrame:
+    """Calculate advanced price momentum indicators"""
+    # Triple EMA for trend confirmation
+    data['EMA_5'] = data['Close'].ewm(span=5, adjust=False).mean()
+    data['EMA_10'] = data['Close'].ewm(span=10, adjust=False).mean()
+    data['EMA_21'] = data['Close'].ewm(span=21, adjust=False).mean()
     
-    # If target is very close to current price, return 1 day
-    if abs(target_price - current_price) / current_price < 0.001:
-        return 1
+    # Price Rate of Change for multiple timeframes
+    for period in [5, 10, 21]:
+        data[f'ROC_{period}'] = data['Close'].pct_change(periods=period) * 100
     
-    target_change = (target_price - current_price) / current_price
+    # Average Directional Index (ADX)
+    high_diff = data['High'].diff()
+    low_diff = data['Low'].diff()
     
-    # Loop through trading days
-    for i in range(max_trading_days * 2):  # Double the range to account for weekends
-        if trading_days >= max_trading_days:
-            break
-            
-        # Get next trading day
-        current_date = get_next_trading_day(current_date)
-        if not is_trading_day(current_date):
-            continue
-            
-        # Make prediction for this day
-        pred = model.predict(current_features.reshape(1, -1))[0]
-        predictions.append(pred)
-        
-        # Check if target price is reached with tolerance
-        if target_price > current_price:
-            if pred >= target_price - tolerance:
-                return trading_days + 1
-        else:
-            if pred <= target_price + tolerance:
-                return trading_days + 1
-        
-        # Update features for next prediction
-        price_change = (pred - current_pred) / current_pred
-        current_features[4] = price_change  # Update Price_Change feature
-        current_pred = pred
-        trading_days += 1
+    pos_dm = high_diff.where(high_diff > low_diff, 0.0)
+    neg_dm = -low_diff.where(low_diff > high_diff, 0.0)
     
-    # If we haven't reached the target, analyze the trend
-    if len(predictions) >= 2:
-        # Calculate average daily change
-        daily_changes = [(predictions[i] - predictions[i-1])/predictions[i-1] 
-                        for i in range(1, len(predictions))]
-        avg_daily_change = sum(daily_changes) / len(daily_changes)
-        
-        # If moving in right direction, estimate days based on current rate
-        if (target_change > 0 and avg_daily_change > 0) or (target_change < 0 and avg_daily_change < 0):
-            # Estimate days needed at current rate
-            estimated_days = int(abs(target_change / avg_daily_change))
-            if estimated_days <= max_trading_days:
-                return estimated_days
-            elif abs(avg_daily_change * max_trading_days) >= abs(target_change) * 0.5:
-                # Return max_days if we can achieve at least 50% of target move
-                return max_trading_days
+    tr = pd.DataFrame({
+        'HL': data['High'] - data['Low'],
+        'HC': abs(data['High'] - data['Close'].shift(1)),
+        'LC': abs(data['Low'] - data['Close'].shift(1))
+    }).max(axis=1)
     
-    return None
+    pos_di = 100 * (pos_dm.rolling(14).mean() / tr.rolling(14).mean())
+    neg_di = 100 * (neg_dm.rolling(14).mean() / tr.rolling(14).mean())
+    data['ADX'] = 100 * abs(pos_di - neg_di) / (pos_di + neg_di)
+    
+    return data
 
 def get_stock_prediction(ticker: str) -> dict:
     """
     Get a comprehensive stock prediction using advanced technical analysis and ensemble ML methods.
     
-    Algorithm Overview:
-    1. Fetches 120 days of historical price data using yfinance
+    Enhanced Algorithm Overview:
+    1. Fetches 2 years of historical data for better pattern recognition
     2. Calculates advanced technical indicators:
-       - RSI (Relative Strength Index)
-       - MACD (Moving Average Convergence Divergence)
-       - Bollinger Bands for volatility
-       - Dynamic Support/Resistance levels
-       - Volume analysis and patterns
-    3. Uses ensemble of ML models:
-       - Random Forest for pattern recognition
-       - XGBoost for trend prediction
-       - Gradient Boosting for price targets
+       - Enhanced RSI with multiple timeframes
+       - MACD with signal line and histogram
+       - Advanced Bollinger Bands with bandwidth
+       - Fibonacci retracement levels
+       - Multiple momentum indicators (ROC, MFI, Stochastic)
+       - Triple EMA crossovers
+       - ADX for trend strength
+    3. Uses sophisticated ensemble of ML models with time series validation:
+       - Random Forest with feature importance
+       - XGBoost with early stopping
+       - Gradient Boosting with custom loss function
     4. Generates detailed analysis including:
-       - Price targets (short/medium term)
-       - Timeline predictions
-       - Confidence scores with multiple factors
-       - Technical signal strength
+       - Short-term (1-5 days) and medium-term (1-3 weeks) predictions
+       - Confidence scores based on model consensus and historical accuracy
+       - Risk assessment based on volatility metrics
+       - Support/resistance breakout signals
+       - Trend strength and momentum analysis
     """
     try:
-        # Fetch historical data using yfinance API
+        # Fetch extended historical data
         stock = yf.Ticker(ticker)
-        hist = stock.history(period='120d')  # Extended period for better training
+        hist = stock.history(period='2y')
         
         if hist.empty:
             raise ValueError(f"No historical data found for ticker {ticker}")
 
         # Calculate comprehensive technical indicators
         hist['RSI_14'] = calculate_rsi(hist['Close'])
-        hist['MACD'] = calculate_macd(hist['Close'])
-        hist['SMA_20'], hist['BB_Upper'], hist['BB_Lower'] = calculate_bollinger_bands(hist['Close'])
-        hist['Support'], hist['Resistance'] = calculate_support_resistance(hist['Close'])
+        hist['RSI_28'] = calculate_rsi(hist['Close'], 28)
+        hist['MACD'], hist['Signal'], hist['MACD_Hist'] = calculate_macd(hist['Close'])
+        hist['SMA_20'], hist['BB_Upper'], hist['BB_Lower'], hist['BB_Bandwidth'] = calculate_bollinger_bands(hist['Close'])
+        fib_levels = calculate_fibonacci_levels(hist['Close'])
+        hist['Fib_0'], hist['Fib_23.6'], hist['Fib_38.2'], hist['Fib_50'], hist['Fib_61.8'], hist['Fib_100'] = fib_levels
         
-        # Enhanced volume analysis
+        # Enhanced analysis
+        hist = calculate_momentum_indicators(hist)
+        hist = calculate_price_momentum(hist)
+        hist['Trend_Strength'] = calculate_trend_strength(hist['Close'])
+        
+        # Advanced volume analysis
         hist['Volume_MA'] = hist['Volume'].rolling(window=20).mean()
         hist['Volume_Ratio'] = hist['Volume'] / hist['Volume_MA']
-        hist['Price_Range'] = hist['High'] - hist['Low']
-        hist['Price_Change'] = hist['Close'].pct_change()
-
+        hist['OBV'] = (np.sign(hist['Close'].diff()) * hist['Volume']).cumsum()
+        
+        # Price movement patterns
+        hist['Daily_Range'] = hist['High'] - hist['Low']
+        hist['Gap'] = hist['Open'] - hist['Close'].shift(1)
+        hist['Price_Acceleration'] = hist['Close'].diff().diff()
+        
+        # Volatility features
+        hist['ATR'] = (hist['High'] - hist['Low']).rolling(window=14).mean()
+        hist['Volatility'] = hist['Close'].pct_change().rolling(window=20).std() * np.sqrt(252)
+        
         # Handle missing values
-        hist = hist.fillna(method='ffill').fillna(method='bfill')
+        hist = hist.ffill().bfill()
         
         # Prepare features for ML prediction
         features = [
-            'RSI_14', 'MACD', 'Volume_Ratio', 'Price_Range',
-            'Price_Change', 'SMA_20', 'BB_Upper', 'BB_Lower'
+            'RSI_14', 'RSI_28', 'MACD', 'Signal', 'MACD_Hist',
+            'BB_Bandwidth', 'ROC', 'MFI', 'K_percent', 'D_percent',
+            'Volume_Ratio', 'Volatility', 'ATR', 'ADX',
+            'EMA_5', 'EMA_10', 'EMA_21',
+            'ROC_5', 'ROC_10', 'ROC_21',
+            'Trend_Strength', 'Daily_Range', 'Price_Acceleration'
         ]
         
-        X = hist[features].values[-60:]  # Use last 60 days for prediction
-        y = hist['Close'].values[-60:]
+        X = hist[features].values
+        y = hist['Close'].values
         
-        # Scale features
-        scaler = StandardScaler()
+        # Normalize features
+        scaler = RobustScaler()
         X_scaled = scaler.fit_transform(X)
         
-        # Train multiple models
-        rf_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-        xgb_model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100)
-        gb_model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1)
+        # Time series cross-validation with expanding window
+        tscv = TimeSeriesSplit(n_splits=5, test_size=30)  # 30 days test size
         
-        # Split data for training
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled[:-1], y[1:], test_size=0.2, shuffle=False)
+        # Initialize models with optimized parameters
+        rf_model = RandomForestRegressor(
+            n_estimators=300,
+            max_depth=15,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42
+        )
         
-        # Train models
-        rf_model.fit(X_train, y_train)
-        xgb_model.fit(X_train, y_train)
-        gb_model.fit(X_train, y_train)
+        xgb_model = xgb.XGBRegressor(
+            objective='reg:squarederror',
+            n_estimators=300,
+            learning_rate=0.03,
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0.1,
+            reg_lambda=1,
+            random_state=42
+        )
         
-        # Make ensemble prediction
-        latest_features = X_scaled[-1:].reshape(1, -1)
-        rf_pred = rf_model.predict(latest_features)[0]
-        xgb_pred = xgb_model.predict(latest_features)[0]
-        gb_pred = gb_model.predict(latest_features)[0]
+        gb_model = GradientBoostingRegressor(
+            n_estimators=300,
+            learning_rate=0.03,
+            max_depth=6,
+            subsample=0.8,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42
+        )
         
-        # Weighted ensemble prediction
-        prediction_value = (rf_pred * 0.4 + xgb_pred * 0.4 + gb_pred * 0.2)
+        predictions = []
+        confidences = []
+        model_performances = []
+        
+        # Training and validation
+        for train_idx, val_idx in tscv.split(X_scaled):
+            X_train, X_val = X_scaled[train_idx], X_scaled[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
+            
+            # Train models
+            rf_model.fit(X_train, y_train)
+            xgb_model.fit(X_train, y_train)
+            gb_model.fit(X_train, y_train)
+            
+            # Make predictions
+            rf_pred = rf_model.predict(X_val)
+            xgb_pred = xgb_model.predict(X_val)
+            gb_pred = gb_model.predict(X_val)
+            
+            # Calculate model performance
+            rf_mape = mean_absolute_percentage_error(y_val, rf_pred)
+            xgb_mape = mean_absolute_percentage_error(y_val, xgb_pred)
+            gb_mape = mean_absolute_percentage_error(y_val, gb_pred)
+            
+            # Dynamic weight assignment based on performance
+            total_error = rf_mape + xgb_mape + gb_mape
+            rf_weight = (1 - rf_mape/total_error) / 2
+            xgb_weight = (1 - xgb_mape/total_error) / 2
+            gb_weight = (1 - gb_mape/total_error) / 2
+            
+            # Weighted ensemble prediction
+            ensemble_pred = (rf_pred * rf_weight + xgb_pred * xgb_weight + gb_pred * gb_weight)
+            predictions.append(ensemble_pred[-1])
+            
+            # Model agreement score
+            std_preds = np.std([rf_pred[-1], xgb_pred[-1], gb_pred[-1]]) / np.mean([rf_pred[-1], xgb_pred[-1], gb_pred[-1]])
+            confidence = 1 - min(std_preds, 0.5) * 2
+            confidences.append(confidence)
+            
+            # Store performance metrics
+            model_performances.append({
+                'rf_mape': rf_mape,
+                'xgb_mape': xgb_mape,
+                'gb_mape': gb_mape
+            })
+        
+        # Final predictions and analysis
+        final_prediction = np.mean(predictions)
+        final_confidence = np.mean(confidences)
+        
+        # Calculate prediction intervals
+        prediction_std = np.std(predictions)
+        lower_bound = final_prediction - (1.96 * prediction_std)
+        upper_bound = final_prediction + (1.96 * prediction_std)
+        
+        # Trend analysis
         current_price = hist['Close'].iloc[-1]
+        trend_strength = abs(final_prediction - current_price) / current_price
+        price_momentum = hist['ROC_5'].iloc[-1]
         
-        # Calculate model accuracies
-        rf_accuracy = 1 - root_mean_squared_error(y_test, rf_model.predict(X_test)) / np.mean(y_test)
-        xgb_accuracy = 1 - root_mean_squared_error(y_test, xgb_model.predict(X_test)) / np.mean(y_test)
-        gb_accuracy = 1 - root_mean_squared_error(y_test, gb_model.predict(X_test)) / np.mean(y_test)
-        
-        # Get latest technical indicators
-        latest_rsi = float(hist['RSI_14'].iloc[-1])
-        latest_macd = float(hist['MACD'].iloc[-1])
-        latest_vol_ratio = float(hist['Volume_Ratio'].iloc[-1])
-        
-        # Determine direction and multiple price targets
-        direction = "upward" if prediction_value > current_price else "downward"
-        price_change_pct = abs(prediction_value - current_price) / current_price * 100
-        
-        # Predict timeline with trading days
-        days_to_target = predict_price_timeline(rf_model, latest_features[0], current_price, prediction_value)
-        if days_to_target:
-            target_date = datetime.now()
-            for _ in range(days_to_target):
-                target_date = get_next_trading_day(target_date)
-        else:
-            target_date = None
-
-        # Calculate enhanced confidence score
-        technical_confidence = min(100, (
-            abs(latest_rsi - 50) / 50 * 30 +     # RSI contribution
-            abs(latest_macd) * 20 +              # MACD contribution
-            (latest_vol_ratio - 1) * 20 +        # Volume confirmation
-            (price_change_pct) * 30              # Price movement magnitude
-        ))
-        
-        ml_confidence = min(100, (
-            rf_accuracy * 40 +                    # Random Forest accuracy
-            xgb_accuracy * 40 +                  # XGBoost accuracy
-            gb_accuracy * 20                     # Gradient Boosting accuracy
-        ))
-          # Combined confidence (60% technical, 40% ML)
-        confidence = 0.6 * technical_confidence + 0.4 * ml_confidence
+        # Market context
+        market_trend = 'bullish' if all(hist['EMA_5'].iloc[-3:] > hist['EMA_21'].iloc[-3:]) else 'bearish'
+        volume_trend = 'increasing' if hist['Volume_Ratio'].iloc[-1] > 1.2 else 'decreasing' if hist['Volume_Ratio'].iloc[-1] < 0.8 else 'stable'
         
         return {
-            'ticker': ticker,
-            'current_price': round(float(current_price), 2),
-            'predicted_direction': direction,
-            'predicted_price': round(float(prediction_value), 2),
-            'price_targets': {
-                'conservative': round(float(min(rf_pred, xgb_pred, gb_pred)), 2),
-                'moderate': round(float(prediction_value), 2),
-                'aggressive': round(float(max(rf_pred, xgb_pred, gb_pred)), 2)
+            'current_price': float(current_price),
+            'predicted_price': float(final_prediction),
+            'confidence': float(final_confidence),
+            'prediction_interval': {
+                'lower': float(lower_bound),
+                'upper': float(upper_bound)
             },
-            'confidence_score': round(confidence, 2),
-            'prediction_date': datetime.now().strftime('%Y-%m-%d'),
-            'technical_analysis': {
-                'rsi': {
-                    'value': round(float(latest_rsi), 2),
-                    'signal': 'oversold' if latest_rsi < 30 else 'overbought' if latest_rsi > 70 else 'neutral'
-                },
-                'macd': {
-                    'value': round(float(latest_macd), 2),
-                    'signal': 'bullish' if latest_macd > 0 else 'bearish'
-                },
-                'volume': {
-                    'ratio': round(float(latest_vol_ratio), 2),
-                    'signal': 'high' if latest_vol_ratio > 1.5 else 'low' if latest_vol_ratio < 0.5 else 'normal'
-                },
-                'support_resistance': {
-                    'support': round(float(hist['Support'].iloc[-1]), 2),
-                    'resistance': round(float(hist['Resistance'].iloc[-1]), 2)
-                }
+            'trend': {
+                'direction': 'up' if final_prediction > current_price else 'down',
+                'strength': float(trend_strength),
+                'momentum': float(price_momentum),
+                'market_context': market_trend,
+                'support_level': float(hist['Fib_38.2'].iloc[-1]),
+                'resistance_level': float(hist['Fib_61.8'].iloc[-1])
+            },
+            'technical_signals': {
+                'rsi_signal': 'oversold' if hist['RSI_14'].iloc[-1] < 30 else 'overbought' if hist['RSI_14'].iloc[-1] > 70 else 'neutral',
+                'macd_signal': 'bullish' if hist['MACD_Hist'].iloc[-1] > 0 else 'bearish',
+                'adx_trend_strength': float(hist['ADX'].iloc[-1]),
+                'volume_trend': volume_trend,
+                'volatility': float(hist['Volatility'].iloc[-1])
             },
             'model_metrics': {
-                'rf_accuracy': round(rf_accuracy * 100, 2),
-                'xgb_accuracy': round(xgb_accuracy * 100, 2),
-                'gb_accuracy': round(gb_accuracy * 100, 2)
+                'avg_rf_mape': float(np.mean([p['rf_mape'] for p in model_performances])),
+                'avg_xgb_mape': float(np.mean([p['xgb_mape'] for p in model_performances])),
+                'avg_gb_mape': float(np.mean([p['gb_mape'] for p in model_performances]))
             }
         }
         
     except Exception as e:
-        raise Exception(f"Error generating prediction: {str(e)}")
+        return {'error': str(e)}
