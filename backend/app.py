@@ -43,13 +43,29 @@ def validate_ticker(ticker):
 @limiter.limit("5 per minute")  # Specific rate limit for this endpoint
 def get_stock_prediction():
     """
-    Get stock prediction for a given ticker symbol.
+    Get stock predictions for different time periods.
     
     Query Parameters:
         ticker (str): Stock ticker symbol
         
     Returns:
-        JSON response containing prediction data or error message
+        JSON response containing predictions for different time periods:
+        - 1 day (1d)
+        - 1 week (1w)
+        - 1 month (1m)
+        - 1 year (1y)
+        
+        Each prediction includes:
+        - Trend (bullish/bearish/neutral)
+        - Confidence score
+        - Predicted price
+        - Percent change
+        
+        Also includes current technical signals:
+        - RSI signal
+        - MACD signal
+        - Volatility
+        - Volume trend
     """
     ticker = request.args.get('ticker')
     
@@ -68,6 +84,12 @@ def get_stock_prediction():
     try:
         from utils.prediction_utils import get_stock_prediction as get_prediction
         prediction_data = get_prediction(ticker.upper())
+        
+        if 'error' in prediction_data:
+            return jsonify({
+                'error': prediction_data['error'],
+                'status': 'error'
+            }), 500
         
         return jsonify({
             'data': prediction_data,
