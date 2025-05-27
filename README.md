@@ -135,20 +135,21 @@ Error Response:
 
 ### Get Stock Prediction
 
-Get advanced stock price predictions using machine learning and technical analysis.
+Get advanced stock price predictions for multiple time frames using machine learning and technical analysis.
 
 ```http
 GET http://127.0.0.1:5000/stock/prediction?ticker={symbol}
 ```
 
-This endpoint uses a sophisticated ensemble of machine learning models and technical indicators to predict stock price movements. The prediction system includes:
+This endpoint uses a sophisticated ensemble of machine learning models to predict stock trends across different time periods. The prediction system includes:
 
-- 2 years of historical data analysis
-- Multiple technical indicators (RSI, MACD, Bollinger Bands, etc.)
-- Advanced momentum and trend analysis
+- 5 years of historical data analysis for reliable long-term predictions
+- Multiple technical indicators (RSI, MACD, Bollinger Bands)
+- Time-based predictions for different horizons (1 day, 1 week, 1 month, 1 year)
 - Ensemble ML models (Random Forest, XGBoost, Gradient Boosting)
-- Time series cross-validation
-- Dynamic model weighting based on performance
+- Dynamic model complexity adjustment based on data availability
+- Adaptive feature scaling and robust error handling
+- Confidence-based trend classification
 
 Parameters:
 
@@ -159,33 +160,40 @@ Example Response:
 ```json
 {
   "data": {
-    "confidence": 0.9490711014853327,
-    "current_price": 163.99000549316406,
-    "model_metrics": {
-      "avg_gb_mape": 0.12209361041418505,
-      "avg_rf_mape": 0.13017329335440375,
-      "avg_xgb_mape": 0.1454700128365251
-    },
-    "predicted_price": 122.19888626062838,
-    "prediction_interval": {
-      "lower": 57.15579293348053,
-      "upper": 187.24197958777626
+    "current_price": 163.99,
+    "time_based_predictions": {
+      "1d": {
+        "trend": "bullish",
+        "confidence": 0.85,
+        "predicted_price": 165.75,
+        "percent_change": 1.07
+      },
+      "1w": {
+        "trend": "neutral",
+        "confidence": 0.78,
+        "predicted_price": 164.50,
+        "percent_change": 0.31
+      },
+      "1m": {
+        "trend": "bearish",
+        "confidence": 0.72,
+        "predicted_price": 155.30,
+        "percent_change": -5.30
+      },
+      "1y": {
+        "trend": "bullish",
+        "confidence": 0.65,
+        "predicted_price": 180.80,
+        "percent_change": 10.25
+      }
     },
     "technical_signals": {
-      "adx_trend_strength": 2597.9239502754817,
+      "rsi_signal": "neutral",
       "macd_signal": "bullish",
-      "rsi_signal": "overbought",
-      "volatility": 0.5711223344851456,
-      "volume_trend": "decreasing"
+      "volatility": 0.15,
+      "volume_trend": "increasing"
     },
-    "trend": {
-      "direction": "down",
-      "market_context": "bullish",
-      "momentum": 5.364948686880422,
-      "resistance_level": 146.34227668762207,
-      "strength": 0.2548394282130672,
-      "support_level": 135.37771690368652
-    }
+    "timestamp": "2025-05-27T10:30:00.000Z"
   },
   "status": "success"
 }
@@ -194,23 +202,22 @@ Example Response:
 Response Fields:
 
 - `current_price`: Current stock price
-- `predicted_price`: ML model ensemble's price prediction
-- `confidence`: Prediction confidence score (0-1)
-- `prediction_interval`: 95% confidence interval for the prediction
-- `trend`:
-  - `direction`: Price trend direction
-  - `strength`: Trend strength indicator
-  - `momentum`: Short-term price momentum
-  - `market_context`: Overall market trend
-  - `support_level`: Key support price level
-  - `resistance_level`: Key resistance price level
-- `technical_signals`:
-  - `rsi_signal`: RSI-based market condition
-  - `macd_signal`: MACD trend signal
-  - `adx_trend_strength`: ADX trend strength (0-100)
-  - `volume_trend`: Volume trend analysis
-  - `volatility`: Annualized volatility
-- `model_metrics`: Performance metrics for each model (MAPE)
+- `time_based_predictions`: Predictions for different time periods
+  - `1d`: One day prediction
+  - `1w`: One week prediction
+  - `1m`: One month prediction
+  - `1y`: One year prediction
+  For each time period:
+  - `trend`: Direction prediction (bullish/bearish/neutral)
+  - `confidence`: Prediction confidence score (0-1)
+  - `predicted_price`: Expected price at end of period
+  - `percent_change`: Expected percentage change
+- `technical_signals`: Current market indicators
+  - `rsi_signal`: RSI-based condition (overbought/oversold/neutral)
+  - `macd_signal`: MACD trend signal (bullish/bearish)
+  - `volatility`: Current price volatility
+  - `volume_trend`: Volume trend analysis (increasing/decreasing)
+- `timestamp`: Time of prediction
 
 Error Response:
 
