@@ -93,7 +93,14 @@ Example Response:
 
 ### Get Stock Data
 
-Get comprehensive stock data for a specific ticker symbol.
+Get comprehensive stock data for a specific ticker symbol. The endpoint provides extensive financial information organized into several categories:
+
+- Basic company information (name, description, sector, industry, etc.)
+- Current and historical price data
+- Market statistics and trading information
+- Key financial metrics and ratios
+- Technical indicators
+- Analyst recommendations and price targets
 
 ```http
 GET http://127.0.0.1:5000/stock/data?ticker={symbol}
@@ -111,15 +118,63 @@ Example Response:
     "data": {
         "symbol": "AAPL",
         "name": "Apple Inc.",
+        "description": "Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.",
+        "sector": "Technology",
+        "industry": "Consumer Electronics",
+        "website": "https://www.apple.com",
+        "country": "United States",
+        "fullTimeEmployees": 164000,
+        
         "currentPrice": 175.50,
+        "previousClose": 174.80,
+        "open": 175.00,
         "dayHigh": 176.30,
         "dayLow": 174.80,
-        "marketCap": 2750000000000,
-        "volume": 12345678,
+        "regularMarketPrice": 175.50,
+        "preMarketPrice": 175.20,
+        "postMarketPrice": 175.60,
+        "dayChange": 0.70,
+        "dayChangePercent": 0.40,
         "fiftyTwoWeekHigh": 180.00,
         "fiftyTwoWeekLow": 140.00,
+        
+        "marketCap": 2750000000000,
+        "volume": 12345678,
+        "avgVolume": 15000000,
+        "sharesOutstanding": 15680000000,
+        "floatShares": 15670000000,
+        
         "trailingPE": 28.5,
-        "dividendYield": 0.65
+        "forwardPE": 26.8,
+        "priceToBook": 44.5,
+        "profitMargins": 0.25,
+        "operatingMargins": 0.30,
+        "grossMargins": 0.43,
+        "dividendYield": 0.65,
+        "dividendRate": 0.96,
+        "payoutRatio": 0.15,
+        "beta": 1.28,
+        "enterpriseValue": 2800000000000,
+        "enterpriseToEbitda": 21.5,
+        "forwardEps": 6.55,
+        "trailingEps": 6.15,
+        "bookValue": 3.94,
+        "debtToEquity": 168.9,
+        "currentRatio": 1.04,
+        "quickRatio": 0.88,
+        "returnOnEquity": 0.49,
+        "returnOnAssets": 0.25,
+        
+        "fiftyDayAverage": 173.45,
+        "twoHundredDayAverage": 170.80,
+        "averageVolume10days": 14500000,
+        
+        "targetHighPrice": 190.00,
+        "targetLowPrice": 160.00,
+        "targetMeanPrice": 175.00,
+        "recommendationMean": 2.0,
+        "recommendationKey": "buy",
+        "numberOfAnalystOpinions": 35
     }
 }
 ```

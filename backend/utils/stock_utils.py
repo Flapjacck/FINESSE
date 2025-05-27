@@ -31,6 +31,10 @@ def get_stock_info(ticker: str) -> Dict[str, Any]:
             "name": info.get("longName"),
             "sector": info.get("sector"),
             "industry": info.get("industry"),
+            "description": info.get("longBusinessSummary"),
+            "website": info.get("website"),
+            "country": info.get("country"),
+            "fullTimeEmployees": info.get("fullTimeEmployees"),
             
             # Price information
             "currentPrice": info.get("currentPrice"),
@@ -40,24 +44,59 @@ def get_stock_info(ticker: str) -> Dict[str, Any]:
             "dayLow": info.get("dayLow"),
             "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
             "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow"),
+            "regularMarketPrice": info.get("regularMarketPrice"),
+            "preMarketPrice": info.get("preMarketPrice"),
+            "postMarketPrice": info.get("postMarketPrice"),
             
             # Market data
             "marketCap": info.get("marketCap"),
             "volume": info.get("volume"),
             "avgVolume": info.get("averageVolume"),
+            "sharesOutstanding": info.get("sharesOutstanding"),
+            "floatShares": info.get("floatShares"),
             
             # Financial metrics
             "trailingPE": info.get("trailingPE"),
             "forwardPE": info.get("forwardPE"),
+            "priceToBook": info.get("priceToBook"),
+            "profitMargins": info.get("profitMargins"),
+            "operatingMargins": info.get("operatingMargins"),
+            "grossMargins": info.get("grossMargins"),
             "dividendYield": info.get("dividendYield"),
+            "dividendRate": info.get("dividendRate"),
+            "payoutRatio": info.get("payoutRatio"),
             "beta": info.get("beta"),
+            "enterpriseValue": info.get("enterpriseValue"),
+            "enterpriseToEbitda": info.get("enterpriseToEbitda"),
+            "forwardEps": info.get("forwardEps"),
+            "trailingEps": info.get("trailingEps"),
+            "bookValue": info.get("bookValue"),
+            "debtToEquity": info.get("debtToEquity"),
+            "currentRatio": info.get("currentRatio"),
+            "quickRatio": info.get("quickRatio"),
+            "returnOnEquity": info.get("returnOnEquity"),
+            "returnOnAssets": info.get("returnOnAssets"),
             
-            # Additional metrics
+            # Technical indicators
             "fiftyDayAverage": info.get("fiftyDayAverage"),
             "twoHundredDayAverage": info.get("twoHundredDayAverage"),
+            "averageVolume10days": info.get("averageVolume10days"),
+            "relativeStrengthIndex": info.get("relativeStrengthIndex"),
+            
+            # Analyst recommendations
+            "targetHighPrice": info.get("targetHighPrice"),
+            "targetLowPrice": info.get("targetLowPrice"),
+            "targetMeanPrice": info.get("targetMeanPrice"),
+            "recommendationMean": info.get("recommendationMean"),
+            "recommendationKey": info.get("recommendationKey"),
+            "numberOfAnalystOpinions": info.get("numberOfAnalystOpinions"),
             
             # Latest price from history
-            "latestPrice": hist["Close"].iloc[-1] if not hist.empty else None
+            "latestPrice": hist["Close"].iloc[-1] if not hist.empty else None,
+            
+            # Additional price metrics
+            "dayChange": (info.get("currentPrice", 0) - info.get("previousClose", 0)) if info.get("currentPrice") and info.get("previousClose") else None,
+            "dayChangePercent": ((info.get("currentPrice", 0) - info.get("previousClose", 0)) / info.get("previousClose", 1) * 100) if info.get("currentPrice") and info.get("previousClose") else None
         }
         
         return {k: v for k, v in stock_data.items() if v is not None}
