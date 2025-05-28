@@ -1,117 +1,111 @@
-export interface StockNews {
-    title: string;
-    publisher: string;
-    link: string;
-    published: string;
-    summary: string;
-    source: string | null;
-    type: string;
-    sentiment: {
-        label: string;
-        score: number;
-        nuanced_score: number;
-        confidence: string;
+export interface StockData {
+    // Basic information
+    symbol: string;
+    name: string;
+    sector: string | null;
+    industry: string | null;
+    description: string | null;
+    website: string | null;
+    country: string | null;
+    fullTimeEmployees: number | null;
+    
+    // Price information
+    currentPrice: number | null;
+    previousClose: number | null;
+    open: number | null;
+    dayHigh: number | null;
+    dayLow: number | null;
+    fiftyTwoWeekHigh: number | null;
+    fiftyTwoWeekLow: number | null;
+    regularMarketPrice: number | null;
+    preMarketPrice: number | null;
+    postMarketPrice: number | null;
+    
+    // Market data
+    marketCap: number | null;
+    volume: number | null;
+    avgVolume: number | null;
+    sharesOutstanding: number | null;
+    floatShares: number | null;
+    
+    // Financial metrics
+    trailingPE: number | null;
+    forwardPE: number | null;
+    priceToBook: number | null;
+    profitMargins: number | null;
+    operatingMargins: number | null;
+    grossMargins: number | null;
+    dividendYield: number | null;
+    dividendRate: number | null;
+    payoutRatio: number | null;
+    beta: number | null;
+    enterpriseValue: number | null;
+    enterpriseToEbitda: number | null;
+    forwardEps: number | null;
+    trailingEps: number | null;
+    bookValue: number | null;
+    debtToEquity: number | null;
+    currentRatio: number | null;
+    quickRatio: number | null;
+    returnOnEquity: number | null;
+    returnOnAssets: number | null;
+    
+    // Technical indicators
+    fiftyDayAverage: number | null;
+    twoHundredDayAverage: number | null;
+    averageVolume10days: number | null;
+    relativeStrengthIndex: number | null;
+    
+    // Analyst recommendations
+    targetHighPrice: number | null;
+    targetLowPrice: number | null;
+    targetMeanPrice: number | null;
+    recommendationMean: number | null;
+    recommendationKey: string | null;
+    numberOfAnalystOpinions: number | null;
+    
+    // Latest price info
+    latestPrice: number | null;
+    dayChange: number | null;
+    dayChangePercent: number | null;
+}
+
+export interface StockPrediction {
+    '1d': TimePeriodPrediction;
+    '1w': TimePeriodPrediction;
+    '1m': TimePeriodPrediction;
+    '1y': TimePeriodPrediction;
+    technicalSignals: TechnicalSignals;
+}
+
+export interface TimePeriodPrediction {
+    trend: 'bullish' | 'bearish' | 'neutral';
+    confidence: number;
+    predictedPrice: number;
+    percentChange: number;
+}
+
+export interface TechnicalSignals {
+    rsi: {
+        value: number;
+        signal: 'overbought' | 'oversold' | 'neutral';
+    };
+    macd: {
+        value: number;
+        signal: 'buy' | 'sell' | 'neutral';
+    };
+    volatility: {
+        value: number;
+        trend: 'increasing' | 'decreasing' | 'stable';
+    };
+    volume: {
+        trend: 'increasing' | 'decreasing' | 'stable';
+        deviation: number;
     };
 }
 
-export interface StockAnalysisResponse {
-    meta: {
-        ticker: string;
-        count: number;
-        status: string;
-        timestamp: string;
-        request_id: string;
-    };
-    data: {
-        news: StockNews[];
-        analysis: {
-            sentiment: {
-                summary: {
-                    positive_percentage: number;
-                    negative_percentage: number;
-                    neutral_percentage: number;
-                    overall_sentiment: number;
-                    average_confidence: number;
-                    sentiment_counts: {
-                        positive: number;
-                        negative: number;
-                        neutral: number;
-                    };
-                };
-                trend: {
-                    direction: 'positive' | 'negative';
-                    strength: number;
-                    confidence: number;
-                };
-            };
-            technical: {
-                indicators: {
-                    combined_score: number;
-                    confidence: number;
-                    metrics: {
-                        momentum: number;
-                        price: number;
-                        rsi: number;
-                        volatility: number;
-                        volume_trend: number;
-                    };
-                    moving_averages: {
-                        sma_20: number;
-                        sma_200: number;
-                        sma_50: number;
-                    };
-                    prediction: string;
-                    relative_strength: {
-                        long_term: number;
-                        short_term: number;
-                    };
-                    signals: {
-                        long_term: string;
-                        momentum: string;
-                        rsi: string;
-                        trend: string;
-                        volume: string;
-                    };
-                    technical_score: number;
-                };
-                momentum: {
-                    long_term: number;
-                    short_term: number;
-                };
-                signals: {
-                    long_term: string;
-                    momentum: string;
-                    rsi: string;
-                    trend: string;
-                    volume: string;
-                };
-            };
-            fundamental: {
-                metrics: {
-                    pe_ratio?: number;
-                    market_cap?: number;
-                    beta?: number;
-                    dividend_yield?: number;
-                    revenue_growth?: number;
-                    profit_margins?: number;
-                };
-                health_score: number;
-            };
-        };
-        recommendation: {
-            action: string;
-            confidence: number;
-            factors: {
-                combined: number;
-                sentiment: number;
-                technical: number;
-            };
-            summary: string;
-        };
-    };
-}
-
-export interface StockError {
-    message: string;
-    code: string;
+export interface APIResponse<T> {
+    data: T;
+    status: 'success' | 'error';
+    error?: string;
 }
