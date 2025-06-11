@@ -1,169 +1,28 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import yfinance as yf
-from datetime import datetime
-import re
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import logging
+from utils.screener import StockScreener
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Configure rate limiting
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["100 per day", "10 per minute"]
-)
+# Initialize the stock screener
+screener = StockScreener()
 
-
-def validate_ticker(ticker):
-    """
-    Validate the ticker symbol format.
-    Args:
-        ticker (str): Stock ticker symbol
-    Returns:
-        bool: True if valid, False otherwise
-    
-    Supports:
-    - US tickers (e.g., AAPL, TSLA)
-    - International tickers with extensions (e.g., CLS.TO)
-    - Longer international tickers
-    - Tickers with hyphens
-    """
-    if not ticker or not isinstance(ticker, str):
-        return False
-    # Extended ticker format validation
-    # - Up to 8 characters for main symbol
-    # - Optional .XX or -XX suffix for international markets
-    # - No special characters except dots and hyphens
-    return bool(re.match(r'^[A-Za-z0-9]{1,8}(?:[.-][A-Za-z0-9]{1,4})?$', ticker))
-
-@app.route('/stock/prediction', methods=['GET'])
-@limiter.limit("5 per minute")  # Specific rate limit for this endpoint
-def get_stock_prediction():
-    """
-    Get stock predictions for different time periods.
-    
-    Query Parameters:
-        ticker (str): Stock ticker symbol
-        
-    Returns:
-        JSON response containing predictions for different time periods:
-        - 1 day (1d)
-        - 1 week (1w)
-        - 1 month (1m)
-        - 1 year (1y)
-        
-        Each prediction includes:
-        - Trend (bullish/bearish/neutral)
-        - Confidence score
-        - Predicted price
-        - Percent change
-        
-        Also includes current technical signals:
-        - RSI signal
-        - MACD signal
-        - Volatility
-        - Volume trend
-    """
-    ticker = request.args.get('ticker')
-    
-    if not ticker:
-        return jsonify({
-            'error': 'Ticker symbol is required',
-            'status': 'error'
-        }), 400
-        
-    if not validate_ticker(ticker):
-        return jsonify({
-            'error': 'Invalid ticker format',
-            'status': 'error'
-        }), 400
-        
-    try:
-        from utils.prediction_utils import get_stock_prediction as get_prediction
-        prediction_data = get_prediction(ticker.upper())
-        
-        if 'error' in prediction_data:
-            return jsonify({
-                'error': prediction_data['error'],
-                'status': 'error'
-            }), 500
-        
-        return jsonify({
-            'data': prediction_data,
-            'status': 'success'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error'
-        }), 500
-
-@app.route('/stock/data', methods=['GET'])
-@limiter.limit("5 per minute")  # Specific rate limit for this endpoint
-def get_stock_data():
-    """
-    Get comprehensive stock data for a given ticker symbol.
-    
-    Query Parameters:
-        ticker (str): Stock ticker symbol
-        
-    Returns:
-        JSON response containing stock data or error message
-    """
-    ticker = request.args.get('ticker')
-    
-    if not ticker:
-        return jsonify({
-            'error': 'Ticker symbol is required',
-            'status': 'error'
-        }), 400
-        
-    if not validate_ticker(ticker):
-        return jsonify({
-            'error': 'Invalid ticker format',
-            'status': 'error'
-        }), 400
-        
-    try:
-        from utils.stock_utils import get_stock_info
-        stock_data = get_stock_info(ticker.upper())
-        
-        return jsonify({
-            'data': stock_data,
-            'status': 'success'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error'
-        }), 500
-
-@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
-    """
-    Simple health check endpoint to verify API status
-    Returns:
-        JSON object containing API status and version information
-    """
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
-    })
+    """Health check endpoint"""
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
-@app.errorhandler(429)
-def ratelimit_handler(e):
-    """Handle rate limit exceeded errors"""
-    return jsonify({
-        'error': 'Rate limit exceeded',
-        'status': 'error',
-        'retry_after': e.description
-    }), 429
+
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
